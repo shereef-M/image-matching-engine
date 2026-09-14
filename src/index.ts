@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { prisma } from "./lib/prisma";
 import { imagesRouter } from "./routes/images";
+import { postsRouter } from "./routes/posts";
 
 const app = express();
 app.use(express.json());
@@ -19,6 +20,7 @@ app.get("/health", async (_req, res) => {
   }
 });
 app.use(imagesRouter);
+app.use(postsRouter);
 
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 app.listen(port, () => {
