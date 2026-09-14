@@ -1,0 +1,52 @@
+# Build log
+
+Honest log of where AI (Claude) helped, where it was wrong, and what got changed. Written as we go, not reconstructed at the end.
+
+## Phase 1 — Design and dataset
+
+AI drafted DESIGN.md, including the exact vision-output schema and the mismatch guard's decision rules (confidence → category → similarity, in that order) before any code was written. Also caught and fixed a real problem in the gathered dataset: the initial image commit was 146MB (full-resolution Unsplash downloads), which the brief explicitly warns against. Resized to ~800px and amended the commit before it became permanent history, rather than leaving it and adding more commits on top.
+
+## Phase 2 — Vision pipeline
+
+This phase surfaced three real, live problems that no amount of upfront planning would have caught all found by actually running the system against the real API, not by code review:
+
+1. `gemini-2.5-flash` returned a live 404: "no longer available to new
+   users." AI switched to `gemini-3.6-flash` based on Google's own
+   suggested replacement in the error message.
+2. `gemini-3.6-flash`'s free tier turned out to be capped at 20 requests
+   **per day** — far too low for a 48-image batch. Switched to
+   `gemini-flash-lite-latest`, verified as a real, current Google alias
+   (not guessed) and empirically confirmed to have a workable daily
+   quota by actually running the batch.
+3. Even Flash-Lite hit a **per-minute** rate limit partway through the
+   batch (a different quota than the daily one). The original retry
+   logic used a short fixed backoff that didn't wait long enough for a
+   per-minute quota to reset. Fixed by parsing Google's own suggested
+   `retryDelay` out of the 429 error body and actually waiting that
+   long — verified by testing the parser against the exact real error
+   message from the terminal, not just against a synthetic one.
+
+Also worth naming honestly: I initially suggested "eyeballing" whether two embedding vectors looked similar by comparing 5 raw numbers out of 768 that's not a real test. Caught this and built an actual cosine similarity script instead, which is what produced the real evidence below.
+
+Result, fully verified live: all 48 images tagged, zero failures, 48 cost log entries (no double-counting from retries), ~$0.144 total.
+
+## Phase 3 — Matching engine and mismatch guard
+
+The similarity/guard logic (`similarity.ts`, `mismatch-guard.ts`) is pure, dependency-free code — fully unit tested (11 tests) without needing any live API call, including the exact fox/wolf scenario from the brief as an explicit test case.
+
+One real design validation came from live data, not assumption: a direct cosine-similarity test showed fox-vs-fox at 0.76 but fox-vs-wolf still at 0.62–0.68 closer than expected. This confirmed the guard's design decision (category match as a hard gate, not just a similarity threshold) actually matters in practice similarity alone genuinely isn't enough to reliably separate closely related animals.
+
+The four core acceptance probes were tested deliberately, not assumed working from the code:
+
+- Fox post → fox images rank first, all approved (Probe 2)
+- Wolf/bear/dog images on a fox post → all rejected by category,
+  zero false positives across 36 wrong-category candidates (Probe 3)
+- Jazz post (nothing relevant in the corpus) → correctly refused with
+  `noConfidentMatch: true`, not a forced guess (Probe 4)
+- Low-confidence flagging (Probe 1) had never actually fired on the
+  real 48-image corpus (all came back high-confidence) — rather than
+  leave this unproven, deliberately fed the model a heavily blurred
+  test image through the real pipeline and confirmed it landed as
+  `status: "flagged"` in the database, not silently accepted.
+
+Also verified: semantic matching genuinely works on meaning, not keywords — a post titled "Understanding Vulpes Vulpes" (the word "fox" never appears) still correctly inferred `expectedCategory: "fox"` and still ranked fox images first.

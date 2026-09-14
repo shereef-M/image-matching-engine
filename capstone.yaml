@@ -1,0 +1,11 @@
+run: docker compose up -d && npm run dev
+seed: npx tsx src/scripts/seed-images.ts && curl -X POST http://localhost:3000/images/process && curl -X POST http://localhost:3000/images/embed
+test: npm test
+base_url: http://localhost:3000
+endpoints:
+  - GET /health
+  - POST /images/process
+  - POST /images/embed
+  - GET /images
+  - POST /posts
+  - GET /posts/:id/suggestions
