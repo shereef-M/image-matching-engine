@@ -5,7 +5,7 @@ import { describeImage } from "../lib/gemini";
 // Change this to any real file in your dataset if you want to try another one.
 const TEST_IMAGE = path.join(
   process.cwd(),
-  "dataset/images/wolf",
+  "dataset/images/fox",
   process.argv[2] ?? "",
 );
 
