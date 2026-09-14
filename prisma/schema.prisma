@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ImageStatus {
+  pending
+  tagged
+  flagged
+  failed
+  deferred
+}
+
+enum ReviewStatus {
+  pending
+  approved
+  rejected
+}
+
+enum CallType {
+  vision
+  embedding
+}
+
+model Image {
+  id         String      @id @default(uuid())
+  filePath   String
+  category   String? // the folder it came from — the "ground truth" for our own eval
+  subject    String?
+  attributes String[]    @default([])
+  caption    String?
+  confidence Float?
+  embedding  Float[]     @default([])
+  status     ImageStatus @default(pending)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  suggestions Suggestion[]
+
+  @@index([status])
+  @@index([category])
+}
+
+model Post {
+  id        String   @id @default(uuid())
+  title     String
+  body      String
+  embedding Float[]  @default([])
+  createdAt DateTime @default(now())
+
+  suggestions Suggestion[]
+}
+
+model Suggestion {
+  id              String       @id @default(uuid())
+  postId          String
+  post            Post         @relation(fields: [postId], references: [id])
+  imageId         String
+  image           Image        @relation(fields: [imageId], references: [id])
+  similarityScore Float
+  guardApproved   Boolean
+  guardReason     String
+  reviewStatus    ReviewStatus @default(pending)
+  createdAt       DateTime     @default(now())
+
+  @@unique([postId, imageId])
+  @@index([reviewStatus])
+}
+
+model CostLogEntry {
+  id        String   @id @default(uuid())
+  callType  CallType
+  refId     String
+  costUsd   Float
+  createdAt DateTime @default(now())
+
+  @@index([callType])
+}

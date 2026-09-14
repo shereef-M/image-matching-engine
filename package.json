@@ -1,0 +1,41 @@
+{
+  "name": "image-matching-engine",
+  "version": "1.0.0",
+  "description": "Understands what's actually in an image library, tags it, and matches the right image to the right blog post based on meaning, not filenames or keywords. A post about red foxes gets the red-fox photo, never the similar-looking wolf. When no image is a good enough match, the system says so instead of guessing.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "test": "vitest run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shereef-M/image-matching-engine.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/shereef-M/image-matching-engine/issues"
+  },
+  "homepage": "https://github.com/shereef-M/image-matching-engine#readme",
+  "dependencies": {
+    "@google/genai": "^2.22.0",
+    "@prisma/client": "^6.19.3",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.5.1",
+    "prisma": "^6.19.3",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.0"
+  }
+}
