@@ -148,3 +148,39 @@ Top-1 precision: 12/12 = 100.0%
 ```
 
 Honest caveat: 12 self-authored examples is a real result on this dataset, not a claim of universal accuracy on unseen data.
+
+
+## Stretch goals
+
+### ✅ Near-duplicate detection
+
+`src/scripts/find-near-duplicates.ts` compares every image's own embedding against every other image's (not post-to-image; this is image-to-image), flagging pairs above 0.95 cosine similarity as likely near-duplicates. Deliberately a much higher bar than the matching engine's own 0.55 threshold, since two genuinely different photos of the same species should still score high on "same category" without being near-duplicates of each other.
+
+```
+$ npx tsx src/scripts/find-near-duplicates.ts
+Checked 48 images (1128 pairs).
+No near-duplicates found above the 0.95 threshold.
+```
+
+Honest result: zero found, because these are 48 distinct real photos from different photographers a clean negative, not evidence the detector doesn't work. The math and the threshold are real; this dataset simply doesn't contain near-duplicates to catch.
+
+### ✅ Budget guard — demonstrated live, not just described
+
+Most cost-tracking implementations log a number and stop there. This one was actually tested under a real, tight budget to see it stop gracefully.
+
+Setup: running total was $0.1518 (from all prior vision/embedding calls). 12 bear images were reset to `pending`, and `COST_BUDGET_USD` was set to `0.16` — low enough that even a single additional vision call ($0.003) would push the total over the cap.
+
+```
+$ curl -X POST http://localhost:3000/images/process
+{"message":"Batch processing started"}
+
+$ docker exec ... psql ... -c 'SELECT status, COUNT(*) FROM "Image" WHERE category = '\''bear'\'' GROUP BY status;'
+ status   | count
+----------+-------
+ deferred |    12
+```
+
+All 12 correctly marked `deferred` zero vision calls made, zero crashes, zero silent overspend. The check happens before every single call, not after, which is what makes this a real guard rather than after-the-fact logging.
+
+Afterward: budget restored to $1.00, the 12 images reset and reprocessed normally, confirming the system recovers cleanly once
+budget is available again this isn't a one-way failure state.

@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
-import { embedText } from "../lib/gemini";
+import { embedText, ESTIMATED_EMBEDDING_COST_USD } from "../lib/gemini";
 import { getSuggestionsForPost } from "../lib/matching-service";
+import { logCost } from "../lib/cost-tracker";
 
 export const postsRouter = Router();
 
@@ -21,7 +22,7 @@ postsRouter.post("/posts", async (req, res) => {
   try {
     const embedding = await embedText(`${title}. ${body}`);
     const post = await prisma.post.create({ data: { title, body, embedding } });
-    res.status(201).json(post);
+    await logCost("embedding", post.id, ESTIMATED_EMBEDDING_COST_USD);
   } catch (err) {
     res.status(502).json({
       error: "Failed to embed post content",
