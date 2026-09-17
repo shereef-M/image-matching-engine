@@ -23,6 +23,7 @@ postsRouter.post("/posts", async (req, res) => {
     const embedding = await embedText(`${title}. ${body}`);
     const post = await prisma.post.create({ data: { title, body, embedding } });
     await logCost("embedding", post.id, ESTIMATED_EMBEDDING_COST_USD);
+    res.status(201).json(post);
   } catch (err) {
     res.status(502).json({
       error: "Failed to embed post content",

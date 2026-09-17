@@ -15,7 +15,7 @@ export type SuggestionCandidate = {
 
 export type PostSuggestions = {
   postId: string;
-  expectedCategory: string;
+  expectedCategory: string | null;
   bestMatch: SuggestionCandidate | null;
   candidates: SuggestionCandidate[];
   noConfidentMatch: boolean;
@@ -33,6 +33,18 @@ export async function getSuggestionsForPost(
   }
 
   const expectedCategory = await inferExpectedCategory(post.embedding);
+
+  if (expectedCategory === null) {
+    // The post isn't genuinely close to any of the 4 known categories —
+    // don't force a match against "the closest of 4 wrong options."
+    return {
+      postId,
+      expectedCategory: null,
+      bestMatch: null,
+      candidates: [],
+      noConfidentMatch: true,
+    };
+  }
 
   const allEligible = await prisma.image.findMany({
     where: { status: { in: ["tagged", "flagged"] } },
