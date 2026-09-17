@@ -85,9 +85,40 @@ curl http://localhost:3000/posts/<id>/suggestions
 - Budget guard proven live: a real $0.16 cap correctly deferred 12 images with zero API calls made and zero crash, then recovered cleanly once budget was restored.
 - Near-duplicate check: zero found across all 1,128 possible pairs in the 48-image corpus — a clean negative result, not a failure of the check itself.
 
-## Limitations
+## EVIDENCE.md addition
 
-- **"Correct" in the eval set means the right category**, not "this one specific image out of ~12 interchangeable photos." The dataset is generic category photos, not images shot for individual posts, so per-post single-image ground truth isn't meaningful here — this is a deliberate, documented scoping decision, not an oversight.
-- **Category inference always picks the closest of the 4 known categories**, even for posts unrelated to any of them (a post about jazz history gets inferred as "wolf," the least-wrong of four bad options). The similarity threshold still correctly prevents a bad match in these cases — the category label itself just isn't meaningful for genuinely out-of-domain posts.
-- **12 self-authored eval examples** is a real, honest result on this dataset — not a claim that generalizes to arbitrary unseen posts at scale.
-- Fallback image generation and a second AI agent for human-in-the-loop QA (both listed as optional stretch goals in the brief) were deliberately not built — genuine scope jumps that didn't seem to earn their complexity for this project's goals.
+### ✅ Category inference no longer forces a guess for unrelated posts
+
+Previously, `inferExpectedCategory` always returned the closest of the
+4 known categories, even for posts about nothing animal-related (a
+jazz post was labeled "wolf" — the least-wrong of four wrong options).
+
+Real data gathered before choosing a fix (`src/scripts/test-category-confidence.ts`):
+
+```
+fox post (should be HIGH):   fox: 0.740
+bear post (should be HIGH):  bear: 0.590
+jazz post (should be LOW):   wolf: 0.448
+cooking post (should be LOW): fox: 0.459
+astronomy post (should be LOW): bear: 0.465
+```
+
+A clean gap exists between genuinely related posts (0.59–0.74) and
+genuinely unrelated ones (0.43–0.47). `MIN_CATEGORY_CONFIDENCE = 0.52`
+sits in that gap. Below it, `inferExpectedCategory` now returns `null`,
+and the matching service immediately returns `noConfidentMatch: true`
+rather than forcing a category:
+
+```
+$ curl .../posts/<jazz-post-id>/suggestions
+{"expectedCategory":null,"bestMatch":null,"candidates":[],"noConfidentMatch":true}
+```
+
+## BUILDLOG.md addition
+
+## Post-completion — category confidence floor
+
+Same methodology as the similarity threshold tuning: gathered real data first (5 test posts, 2 genuinely related to known categories, 3 genuinely not), found a real gap in the numbers, then picked a threshold that sits inside it not a guess.
+
+Along the way, adding temporary diagnostic logging to `posts.ts` introduced a real bug: a duplicated `try {` line broke the file's brace matching entirely, crashing the dev server silently. Every `POST /posts` request from that point hung forever with no response not because of the AI call, but because the process had actually stopped. Diagnosed by checking the simplest possible thing first (`GET /health`, which still worked) to confirm the issue was specific to one route rather than the whole server, then inspecting the file directly rather than continuing to guess. Fixing the syntax error also surfaced a
+second, unrelated real bug: the success path was missing `res.status(201).json(post)` entirely even once the server was healthy, a successful post creation would have hung forever waiting for a response that was never sent. Both fixed together.
