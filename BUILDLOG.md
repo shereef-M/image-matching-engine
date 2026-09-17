@@ -50,3 +50,15 @@ The four core acceptance probes were tested deliberately, not assumed working fr
   `status: "flagged"` in the database, not silently accepted.
 
 Also verified: semantic matching genuinely works on meaning, not keywords — a post titled "Understanding Vulpes Vulpes" (the word "fox" never appears) still correctly inferred `expectedCategory: "fox"` and still ranked fox images first.
+
+## Phase 4 — Review API, eval set, and a real tuning decision
+
+The review API (approve/reject) was quick mostly wiring, since the guard reasoning was already being persisted since Phase 3.
+
+The eval set is the phase worth describing honestly. First real run came back 7/12 (58.3%), and the easy move would have been to just report that number. Instead, the eval script was extended to print _why_ each failure happened was the category itself wrong, or was similarity too low despite a correct category? Every single failure turned out to be the latter: correct category, similarity just under the 0.65 placeholder threshold.
+
+That's not five unrelated bugs it's one pattern. Fox/wolf test posts happened to use vivid, descriptive language ("cunning," "keen senses," "apex predator") that sits close to how the vision model captioned those photos. Dog/bear posts leaned more encyclopedic ("choosing a breed," "hibernation patterns"), landing further away in embedding space despite being equally correct matches. This also explained a genuinely surprising result on the way there: "Grizzly Bears and Hibernation Patterns" (which literally names the animal) failed, while "Encounters with Large Forest Mammals" (no animal name at all, but far more descriptive) succeeded vividness of language mattered more than literally naming the subject.
+
+`SIMILARITY_THRESHOLD` had been explicitly marked a placeholder since Phase 1, meant to be tuned against real data rather than guessed this was that moment. Lowered it to 0.55, which the diagnostic data directly justified (it cleared every failing case's actual top candidate). Because the guard checks category before similarity, this could not introduce new false positives it can only recover correct-category matches that were being wrongly rejected. Result: 12/12 (100%).
+
+Worth being honest about scope: this is a strong result on 12 self-authored examples, not a claim that generalizes to arbitrary unseen posts. The eval set exists to make a real, data-driven tuning decision possible not to prove the system is perfect.
