@@ -21,9 +21,9 @@ export async function wouldExceedBudget(
   estimatedCost: number,
 ): Promise<boolean> {
   const soFar = await getTotalCostSoFar();
+
   return soFar + estimatedCost > BUDGET_USD;
 }
-
 export async function logCost(
   callType: CallType,
   refId: string,
