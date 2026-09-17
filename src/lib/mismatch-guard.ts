@@ -1,5 +1,5 @@
 export const CONFIDENCE_THRESHOLD = 0.6;
-export const SIMILARITY_THRESHOLD = 0.65; // placeholder — tuned for real in Phase 4 against the eval set
+export const SIMILARITY_THRESHOLD = 0.55; // tuned against the real eval set — see BUILDLOG.md for the reasoning
 
 export type GuardInput = {
   imageConfidence: number;
